@@ -191,10 +191,6 @@ export default function InceptaApp() {
     setAuthUser(null);
   };
 
-  // ─── Show login if not authenticated ───
-  if (authChecking) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', fontSize: 14, direction: 'rtl' }}>جاري التحقق...</div>;
-  if (!authUser) return <LoginScreen onLogin={user => setAuthUser(user)} />;
-
   // ─── Load all data ───
   const loadAll = useCallback(async () => {
     const [p, o, t, c, pr, d, e, a] = await Promise.all([
@@ -380,6 +376,9 @@ export default function InceptaApp() {
     return a;
   }, [opps, tasks]);
 
+  // ─── Auth & Loading gates (AFTER all hooks) ───
+  if (authChecking) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', fontSize: 14, direction: 'rtl' }}>جاري التحقق...</div>;
+  if (!authUser) return <LoginScreen onLogin={user => setAuthUser(user)} />;
   if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', fontSize: 14 }}>جاري تحميل البيانات من Supabase...</div>;
 
   const tabs = [
