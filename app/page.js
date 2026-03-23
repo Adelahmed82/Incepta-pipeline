@@ -2,6 +2,83 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 
+// ─── Login Screen ───
+function LoginScreen({ onLogin }) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [mode, setMode] = useState('login'); // 'login' or 'signup'
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [signupDone, setSignupDone] = useState(false);
+
+  const handleSubmit = async () => {
+    setError(''); setLoading(true);
+    if (mode === 'signup') {
+      const { data, error: err } = await supabase.auth.signUp({ email, password });
+      if (err) { setError(err.message); setLoading(false); return; }
+      // Link auth user to partners table
+      if (data?.user) {
+        await supabase.from('partners').update({ auth_id: data.user.id }).eq('email', email.toLowerCase());
+      }
+      setSignupDone(true); setLoading(false);
+    } else {
+      const { data, error: err } = await supabase.auth.signInWithPassword({ email, password });
+      if (err) { setError(err.message === 'Invalid login credentials' ? 'البريد أو كلمة السر غير صحيحة' : err.message); setLoading(false); return; }
+      if (data?.user) onLogin(data.user);
+    }
+  };
+
+  if (signupDone) return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 60%, #0f4c5c 100%)', direction: 'rtl', fontFamily: "'Segoe UI', sans-serif" }}>
+      <div style={{ background: '#fff', borderRadius: 16, padding: 32, width: 380, maxWidth: '90vw', textAlign: 'center' }}>
+        <div style={{ fontSize: 40, marginBottom: 12 }}>✓</div>
+        <div style={{ fontSize: 16, fontWeight: 700, color: '#059669', marginBottom: 8 }}>تم إنشاء الحساب</div>
+        <div style={{ fontSize: 13, color: '#64748b', marginBottom: 20 }}>تحقق من بريدك الإلكتروني لتأكيد الحساب، ثم سجّل الدخول.</div>
+        <button onClick={() => { setMode('login'); setSignupDone(false); setPassword(''); }} style={{ padding: '10px 24px', background: '#1e3a5f', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>تسجيل الدخول</button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #0f172a 0%, #1e3a5f 60%, #0f4c5c 100%)', direction: 'rtl', fontFamily: "'Segoe UI', sans-serif" }}>
+      <div style={{ background: '#fff', borderRadius: 16, padding: 32, width: 380, maxWidth: '90vw', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+        <div style={{ textAlign: 'center', marginBottom: 24 }}>
+          <div style={{ width: 48, height: 48, borderRadius: 12, background: '#0f172a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 22, marginBottom: 12 }}>I</div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: '#0f172a' }}>INCEPTA</div>
+          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>{mode === 'login' ? 'تسجيل الدخول' : 'إنشاء حساب جديد'}</div>
+        </div>
+
+        {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#dc2626', marginBottom: 12 }}>{error}</div>}
+
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4, color: '#475569' }}>البريد الإلكتروني</label>
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="your@email.com" style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', direction: 'ltr' }} />
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 4, color: '#475569' }}>كلمة السر</label>
+          <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={mode === 'signup' ? '6 أحرف على الأقل' : '••••••'} onKeyDown={e => e.key === 'Enter' && handleSubmit()} style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', direction: 'ltr' }} />
+        </div>
+
+        <button onClick={handleSubmit} disabled={loading || !email || !password} style={{ width: '100%', padding: '10px', background: loading ? '#94a3b8' : '#1e3a5f', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: loading ? 'wait' : 'pointer', fontFamily: 'inherit', marginBottom: 12 }}>
+          {loading ? 'جاري...' : mode === 'login' ? 'دخول' : 'إنشاء حساب'}
+        </button>
+
+        <div style={{ textAlign: 'center', fontSize: 12, color: '#64748b' }}>
+          {mode === 'login' ? (
+            <span>ليس لديك حساب؟ <button onClick={() => { setMode('signup'); setError(''); }} style={{ background: 'none', border: 'none', color: '#1e3a5f', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12 }}>إنشاء حساب</button></span>
+          ) : (
+            <span>لديك حساب؟ <button onClick={() => { setMode('login'); setError(''); }} style={{ background: 'none', border: 'none', color: '#1e3a5f', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12 }}>تسجيل الدخول</button></span>
+          )}
+        </div>
+
+        {mode === 'signup' && <div style={{ marginTop: 16, padding: '10px 12px', background: '#f8fafc', borderRadius: 8, fontSize: 11, color: '#64748b' }}>
+          استخدم نفس البريد المسجل في النظام: adel.ahmed@aucegypt.edu أو arawad80@gmail.com أو mahmoud.dhs@gmail.com
+        </div>}
+      </div>
+    </div>
+  );
+}
+
 const PARTNERS_STATIC = [
   { id: null, slug: 'adel', name: 'د. عادل أحمد', specialty: 'سياسات وحوكمة', color: '#1e3a5f', role: 'admin' },
   { id: null, slug: 'ahmed', name: 'أحمد عوض', specialty: 'متابعة وتقييم', color: '#0d6e56', role: 'partner' },
@@ -78,6 +155,8 @@ function Field({ label, children }) {
 }
 
 export default function InceptaApp() {
+  const [authUser, setAuthUser] = useState(null);
+  const [authChecking, setAuthChecking] = useState(true);
   const [partners, setPartners] = useState([]);
   const [opps, setOpps] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -94,6 +173,27 @@ export default function InceptaApp() {
   const [toast, setToast] = useState('');
 
   const flash = msg => { setToast(msg); setTimeout(() => setToast(''), 3000); };
+
+  // ─── Auth check on mount ───
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setAuthUser(session?.user || null);
+      setAuthChecking(false);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setAuthUser(session?.user || null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    setAuthUser(null);
+  };
+
+  // ─── Show login if not authenticated ───
+  if (authChecking) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', fontSize: 14, direction: 'rtl' }}>جاري التحقق...</div>;
+  if (!authUser) return <LoginScreen onLogin={user => setAuthUser(user)} />;
 
   // ─── Load all data ───
   const loadAll = useCallback(async () => {
@@ -115,9 +215,13 @@ export default function InceptaApp() {
     setDeliverables(d.data || []);
     setExpenses(e.data || []);
     setAuditLog(a.data || []);
-    if (p.data?.length > 0 && !currentPartnerId) setCurrentPartnerId(p.data[0].id);
+    if (p.data?.length > 0 && !currentPartnerId) {
+      // Auto-match logged-in user email to partner
+      const matched = p.data.find(x => x.email?.toLowerCase() === authUser?.email?.toLowerCase());
+      setCurrentPartnerId(matched?.id || p.data[0].id);
+    }
     setLoading(false);
-  }, [currentPartnerId]);
+  }, [currentPartnerId, authUser]);
 
   useEffect(() => { loadAll(); }, []);
 
@@ -298,9 +402,8 @@ export default function InceptaApp() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {alerts.length > 0 && <span style={{ ...S.badge('#dc2626'), cursor: 'pointer' }} onClick={() => setTab('dashboard')}>{alerts.length} تنبيه</span>}
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981' }} />
-            <select value={currentPartnerId || ''} onChange={e => setCurrentPartnerId(e.target.value)} style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 6, padding: '4px 8px', fontSize: 11, fontFamily: 'inherit' }}>
-              {partners.map(p => <option key={p.id} value={p.id} style={{ color: '#000' }}>{p.name}</option>)}
-            </select>
+            <span style={{ fontSize: 11, opacity: 0.9 }}>{currentPartner?.name || authUser?.email}</span>
+            <button onClick={handleSignOut} style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 6, padding: '4px 10px', fontSize: 10, cursor: 'pointer', fontFamily: 'inherit' }}>خروج</button>
           </div>
         </div>
       </div>
